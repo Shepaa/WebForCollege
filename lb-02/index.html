@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href=
+            "https://fonts.googleapis.com">
+    <link rel="preconnect" href=
+            "https://fonts.gstatic.com" crossorigin>
+    <link href=
+                  "https://fonts.googleapis.com/css2?family=Balsamiq+Sans&display=swap"
+          rel="stylesheet">
+    <title>Simon Game</title>
+    <!-- CSS -->
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #2e2e2e, #121212);
+            font-family: 'Balsamiq Sans', sans-serif;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #e0e0e0;
+            text-shadow: 0 0 10px #3498db;
+            animation: glow 2s infinite alternate;
+        }
+
+        #controls {
+            margin: 20px 0;
+        }
+
+        #strict-mode {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background-color: #444;
+            border: 2px solid #2ecc71;
+            cursor: pointer;
+            position: relative;
+        }
+
+        #strict-mode:checked::before {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background-color: #2ecc71;
+        }
+
+        #simon-board {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            max-width: 320px;
+            text-align: center;
+            margin-bottom: 1rem;
+            perspective: 1000px;
+        }
+
+        .simon-btn {
+            width: 120px;
+            height: 120px;
+            border: 5px solid #222;
+            border-radius: 50%;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+            color: #fff;
+            font-weight: bold;
+            font-size: 1.2rem;
+            transition: transform 0.4s ease-in-out;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .simon-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 140%;
+            height: 140%;
+            background: inherit;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .simon-btn:hover::before {
+            opacity: 0.4;
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+
+        .simon-btn:active {
+            transform: scale(0.9);
+        }
+
+        .top-left { background-color: #006400; }
+        .top-right { background-color: #8B0000; }
+        .bottom-left { background-color: #DAA520; }
+        .bottom-right { background-color: #00008B; }
+
+        #start-btn, #power-btn {
+            font-family: 'Balsamiq Sans', sans-serif;
+            margin-top: 20px;
+            padding: 12px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+            color: #fff;
+            border: none;
+            outline: none;
+            border-radius: 8px;
+            transition: background 0.3s, transform 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        #start-btn:hover, #power-btn:hover {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            transform: translateY(-3px);
+        }
+
+        #start-btn:disabled, #power-btn:disabled {
+            background-color: #484a4b;
+            cursor: not-allowed;
+        }
+
+        .level-count {
+            color: #f54242;
+            background-color: rgba(81, 0, 0, 0.8);
+            padding: 5px 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px #3498db, 0 0 20px #3498db, 0 0 30px #3498db, 0 0 40px #3498db;
+            }
+            to {
+                text-shadow: 0 0 15px #27ae60, 0 0 25px #27ae60, 0 0 35px #27ae60, 0 0 45px #27ae60;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+<h1>Simon Game</h1>
+<div id="controls">
+    <label for="strict-mode">Strict Mode</label>
+    <input type="checkbox" id="strict-mode"
+           onchange="toggleStrictMode()">
+</div>
+
+<div id="simon-board">
+    <button class="simon-btn top-left"
+            onclick="handleClick(this)"
+            data-color="1" disabled></button>
+    <button class="simon-btn top-right"
+            onclick="handleClick(this)"
+            data-color="2" disabled></button>
+    <button class="simon-btn bottom-left"
+            onclick="handleClick(this)"
+            data-color="3" disabled></button>
+    <button class="simon-btn bottom-right"
+            onclick="handleClick(this)"
+            data-color="4" disabled></button>
+</div>
+
+<div id="level">
+		<span>Level:
+			<span class="level-count">-</span>
+		</span>
+</div>
+<button id="power-btn"
+        onclick="togglePower()">Start</button>
+<script>
+  let strictMode = false;
+  let powerOn = false;
+  const sequence = [];
+  let userSequence = [];
+  let level = 1;
+
+  const levelCount = document.querySelector('.level-count');
+
+  function startGame() {
+    sequence.length = 0;
+    userSequence.length = 0;
+    level = 1;
+    levelCount.textContent = level;
+    nextRound();
+    document.getElementById("start-btn").disabled = true;
+    document.getElementById("power-btn").disabled = false;
+  }
+
+  function nextRound() {
+    addToSequence();
+    playSequence();
+  }
+
+  function addToSequence() {
+    const randomColor = Math.floor(Math.random() * 4) + 1;
+    sequence.push(randomColor);
+  }
+
+  function playSequence() {
+    let i = 0;
+    const intervalId = setInterval(() => {
+      highlightButton(sequence[i]);
+      i++;
+      if (i >= sequence.length) {
+        clearInterval(intervalId);
+        enableButtons();
+      }
+    }, 1000);
+  }
+
+  function handleClick(button) {
+    if (powerOn) {
+      const userColor = button.getAttribute("data-color");
+      userSequence.push(Number(userColor));
+      highlightButton(userColor);
+      if (!checkSequence()) {
+        if (strictMode) {
+          alert(`Game over! Press Start to retry
+						from level 1.\nFINAL SCORE: ${level}`);
+          togglePower();
+          startGame();
+        } else {
+          alert(`Wrong sequence! Press Start to try again
+						from current level.\nFINAL SCORE: ${level}`);
+          userSequence = [];
+          document.getElementById('power-btn')
+          .addEventListener('click', () => {
+            playSequence();
+          })
+        }
+      } else if (userSequence.length === sequence.length) {
+        userSequence = [];
+        level++;
+        levelCount.textContent = level;
+        if (level <= 20) {
+          setTimeout(() => nextRound(), 1000);
+        } else {
+          alert("Congratulations! You won!");
+          startGame();
+        }
+      }
+    }
+  }
+
+  function checkSequence() {
+    for (let i = 0; i < userSequence.length; i++) {
+      if (userSequence[i] !== sequence[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function highlightButton(color) {
+    const button = document
+    .querySelector(`[data-color="${color}"]`);
+    if (Number(color) === 1) {
+      button.style.backgroundColor = 'lightgreen'
+    }
+    else if (Number(color) === 2) {
+      button.style.backgroundColor = 'tomato'
+    }
+    else if (Number(color) === 3) {
+      button.style.backgroundColor = 'yellow'
+    }
+    else if (Number(color) === 4) {
+      button.style.backgroundColor = 'lightskyblue'
+    }
+    setTimeout(() => {
+      button.attributes.removeNamedItem('style');
+    }, 300);
+  }
+
+  function enableButtons() {
+    const buttons = document
+    .querySelectorAll('.simon-btn');
+    buttons.forEach(button =>
+        button.removeAttribute('disabled'));
+  }
+
+  function disableButtons() {
+    const buttons = document
+    .querySelectorAll('.simon-btn');
+    buttons.forEach(button =>
+        button.setAttribute('disabled', 'true'));
+  }
+
+  function toggleStrictMode() {
+    strictMode = !strictMode;
+  }
+
+  function togglePower() {
+    powerOn = !powerOn;
+    if (powerOn) {
+      startGame();
+      enableButtons();
+      document.getElementById("start-btn")
+          .disabled = false;
+    } else {
+      userSequence = [];
+      disableButtons();
+      document.getElementById("start-btn")
+          .disabled = true;
+    }
+  }
+</script>
+</body>
+
+</html>
